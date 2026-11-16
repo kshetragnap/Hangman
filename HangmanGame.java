@@ -2,17 +2,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 
+<<<<<<< HEAD
 public class HangmanGame {
+=======
+public class HangmanGame extends Game {
+>>>>>>> 448c1b1 (kshetra code)
     private String secretWord;
     private char[] secretLetters;
     private char[] revealedLetters;
     private char[] guessedLetters;
     private int incorrectGuesses;
+<<<<<<< HEAD
     private int maxIncorrectGuesses;
     private double baseWinnings;
     private ArrayList<RoundRecord> history;
 
     public HangmanGame(String word, int maxGuesses) {
+=======
+    private ArrayList<RoundRecord> history;
+
+    public HangmanGame(String word, int maxGuesses) {
+        super(maxGuesses, 10.0);
+>>>>>>> 448c1b1 (kshetra code)
         secretWord = Objects.requireNonNull(word, "word cannot be null");
         if (word.isEmpty()) {
             throw new IllegalArgumentException("word cannot be empty");
@@ -24,7 +35,10 @@ public class HangmanGame {
         secretLetters = word.toCharArray();
         revealedLetters = new char[secretLetters.length];
         guessedLetters = new char[0];
+<<<<<<< HEAD
         maxIncorrectGuesses = maxGuesses;
+=======
+>>>>>>> 448c1b1 (kshetra code)
         history = new ArrayList<>();
         startGame();
     }
@@ -90,7 +104,11 @@ public class HangmanGame {
     }
 
     public boolean isGameOver() {
+<<<<<<< HEAD
         return isWordComplete() || incorrectGuesses >= maxIncorrectGuesses;
+=======
+        return isWordComplete() || incorrectGuesses >= maxIncorrectGuesses();
+>>>>>>> 448c1b1 (kshetra code)
     }
 
     public double getMultiplier(int matches) {
@@ -125,4 +143,11 @@ public class HangmanGame {
         }
         return false;
     }
+<<<<<<< HEAD
+=======
+    @Override
+    public String getGameType() {
+        return "Hangman";
+    }
+>>>>>>> 448c1b1 (kshetra code)
 }
