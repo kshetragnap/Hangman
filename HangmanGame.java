@@ -11,6 +11,7 @@ public class HangmanGame {
     private int maxIncorrectGuesses;
     private double baseWinnings;
     private ArrayList<RoundRecord> history;
+    private boolean roundRecorded;
 
     public HangmanGame(String word, int maxGuesses) {
         secretWord = Objects.requireNonNull(word, "word cannot be null");
@@ -33,6 +34,7 @@ public class HangmanGame {
         incorrectGuesses = 0;
         guessedLetters = new char[0];
         revealedLetters = new char[secretLetters.length];
+        roundRecorded = false;
 
         for (int i = 0; i < secretLetters.length; i++) {
             if (!Character.isLetter(secretLetters[i])) {
@@ -42,7 +44,10 @@ public class HangmanGame {
     }
 
     public boolean makeGuess(char guess) {
-        if (isGameOver() || !Character.isLetter(guess)) {
+        if (!Character.isLetter(guess)) {
+            throw new IllegalArgumentException("Guess must be a letter.");
+        }
+        if (isGameOver()) {
             return false;
         }
 
@@ -94,11 +99,80 @@ public class HangmanGame {
     }
 
     public double getMultiplier(int matches) {
-        throw new UnsupportedOperationException("The reward multiplier has not been specified.");
+        if (matches < 0) {
+            throw new IllegalArgumentException("matches cannot be negative");
+        }
+        return 1.0;
     }
 
     public double calculateReward() {
-        throw new UnsupportedOperationException("The reward calculation has not been specified.");
+        return isWordComplete() ? baseWinnings * getMultiplier(countMatches()) : 0.0;
+    }
+
+    /** Charges the entry fee and starts a fresh round. */
+    public void beginRound(Player player) {
+        Objects.requireNonNull(player, "player cannot be null");
+        if (!player.payForGame()) {
+            throw new IllegalStateException("The player does not have enough money to play.");
+        }
+        startGame();
+    }
+
+    /** Records a completed round once and credits any prize to the player. */
+    public RoundRecord recordRound(Player player) {
+        Objects.requireNonNull(player, "player cannot be null");
+        if (!isGameOver()) {
+            throw new IllegalStateException("The round is not over yet.");
+        }
+        if (roundRecorded) {
+            throw new IllegalStateException("This round has already been recorded.");
+        }
+
+        boolean won = isWordComplete();
+        double winnings = won ? calculateReward() : 0.0;
+        if (winnings > 0) {
+            player.addWinnings(winnings);
+        }
+        if (player instanceof HangmanPlayer) {
+            HangmanPlayer hangmanPlayer = (HangmanPlayer) player;
+            if (won) {
+                hangmanPlayer.recordWin();
+            } else {
+                hangmanPlayer.recordLoss();
+            }
+        }
+
+        RoundRecord record = new RoundRecord(secretWord, incorrectGuesses, countMatches(), winnings, won);
+        history.add(record);
+        roundRecorded = true;
+        return record;
+    }
+
+    public String getMaskedWord() {
+        StringBuilder masked = new StringBuilder();
+        for (char letter : revealedLetters) {
+            masked.append(letter == '\0' ? '_' : letter).append(' ');
+        }
+        return masked.toString().trim();
+    }
+
+    public int getIncorrectGuesses() {
+        return incorrectGuesses;
+    }
+
+    public int getMaxIncorrectGuesses() {
+        return maxIncorrectGuesses;
+    }
+
+    public double getBaseWinnings() {
+        return baseWinnings;
+    }
+
+    public void setBaseWinnings(double baseWinnings) {
+        if (baseWinnings < 0) {
+            throw new IllegalArgumentException("baseWinnings cannot be negative");
+        }
+        this.baseWinnings = baseWinnings;
     }
 
     public void saveGame(Player player) {
@@ -114,7 +188,7 @@ public class HangmanGame {
     }
 
     public ArrayList<RoundRecord> getHistory() {
-        return history;
+        return new ArrayList<>(history);
     }
 
     private boolean containsSecretLetter(char letter) {
