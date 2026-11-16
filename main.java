@@ -1,23 +1,41 @@
+/*
+ * AI assistance disclosure: ChatGPT helped resolve the Main filename issue and update the menu.
+ * Review and document any further student edits before submission, as required by the assignment.
+ * The work submitted is my/our own work.
+ * Elnatan Teaghes, 2026-11-15
+ * Kshetragna Pitchuka, 2026-11-15
+ */
 import java.util.ArrayList;
 import java.util.Scanner;
 
-public class Main {
+/** Program entry point for the Hangman project. */
+class Main {
+    /** Starts the console application.
+     * @param args command-line arguments (unused)
+     */
     public static void main(String[] args) {
-        try (Scanner scanner = new Scanner(System.in)) {
-            System.out.println("___Hangman___");
-            String name = readText(scanner, "Player name: ");
-            double balance = readNonNegativeDouble(scanner, "Starting balance: $");
-            double costPerPlay = readNonNegativeDouble(scanner, "Cost per play: $");
-            String word = readText(scanner, "Secret word or phrase: ");
-            int maxGuesses = readPositiveInt(scanner, "Maximum incorrect guesses: ");
-            double prize = readNonNegativeDouble(scanner, "Prize for a win: $");
+        HangmanConsole.run();
+    }
+}
+/** Handles prompts, menus, and user-friendly recovery from invalid input. */
+final class HangmanConsole {
+    private HangmanConsole() { }
 
-            HangmanPlayer player = new HangmanPlayer(name, balance, costPerPlay);
-            HangmanGame game = new HangmanGame(word, maxGuesses);
-            game.setBaseWinnings(prize);
+    /** Creates the player and game, then runs the menu. */
+    public static void run() {
+        try (Scanner scanner = new Scanner(System.in)) {
+            System.out.println("=== Hangman ===");
+            HangmanPlayer player = new HangmanPlayer(
+                    readText(scanner, "Player name: "),
+                    readNonNegativeDouble(scanner, "Starting balance: $"),
+                    readNonNegativeDouble(scanner, "Cost per play: $"));
+            HangmanGame game = new HangmanGame(
+                    readText(scanner, "Secret word or phrase: "),
+                    readPositiveInt(scanner, "Maximum incorrect guesses: "));
+            game.setBaseWinnings(readNonNegativeDouble(scanner, "Base prize for a win: $"));
             runMenu(scanner, player, game);
-        } catch (IllegalArgumentException ex) {
-            System.out.println("Could not start Hangman: " + ex.getMessage());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            System.out.println("Program ended: " + ex.getMessage());
         }
     }
 
@@ -25,26 +43,26 @@ public class Main {
         boolean running = true;
         while (running) {
             System.out.println("\n1. Play a round");
-            System.out.println("2. Show player stats");
+            System.out.println("2. Show player statistics");
             System.out.println("3. Show round history");
-            System.out.println("4. Exit");
+            System.out.println("4. Save game");
+            System.out.println("5. Load game");
+            System.out.println("6. Generate statistics file");
+            System.out.println("7. Exit");
             String choice = readText(scanner, "Choose an option: ");
-
-            switch (choice) {
-                case "1":
-                    playRound(scanner, player, game);
-                    break;
-                case "2":
-                    showStats(player);
-                    break;
-                case "3":
-                    showHistory(game.getHistory());
-                    break;
-                case "4":
-                    running = false;
-                    break;
-                default:
-                    System.out.println("Please choose 1, 2, 3, or 4.");
+            try {
+                switch (choice) {
+                    case "1": playRound(scanner, player, game); break;
+                    case "2": showStats(player); break;
+                    case "3": showHistory(game.getHistory()); break;
+                    case "4": game.saveGame(player); break;
+                    case "5": game.loadGame(player); break;
+                    case "6": game.generateStatistics(player); break;
+                    case "7": running = false; break;
+                    default: System.out.println("Choose a number from 1 to 7.");
+                }
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                System.out.println("That action could not be completed: " + ex.getMessage());
             }
         }
         System.out.println("Thanks for playing, " + player.getName() + "!");
@@ -58,14 +76,13 @@ public class Main {
             return;
         }
 
-        System.out.println("Round started. Entry fee: $" + player.getCostPerPlay());
+        System.out.println("Entry fee paid: $" + player.getCostPerPlay());
         while (!game.isGameOver()) {
             System.out.println("\nWord: " + game.getMaskedWord());
             System.out.println("Incorrect guesses: " + game.getIncorrectGuesses()
                     + "/" + game.getMaxIncorrectGuesses());
             try {
-                char guess = readGuess(scanner);
-                boolean matched = game.makeGuess(guess);
+                boolean matched = game.makeGuess(readGuess(scanner));
                 System.out.println(matched ? "That letter is in the word." : "No match.");
             } catch (IllegalArgumentException ex) {
                 System.out.println(ex.getMessage() + " Try again.");
@@ -74,8 +91,7 @@ public class Main {
 
         RoundRecord record = game.recordRound(player);
         if (record.isWon()) {
-            System.out.println("You solved it! The word was: " + record.getWord());
-            System.out.println("Winnings: $" + record.getWinnings());
+            System.out.println("You solved it! Winnings: $" + record.getWinnings());
         } else {
             System.out.println("Out of guesses. The word was: " + record.getWord());
         }
@@ -88,6 +104,7 @@ public class Main {
         System.out.println("Balance: $" + player.getBalance());
         System.out.println("Total spent: $" + player.getAmountSpent());
         System.out.println("Total won: $" + player.getTotalWinnings());
+        System.out.println("Net profit/loss: $" + (player.getTotalWinnings() - player.getAmountSpent()));
         System.out.println("Games played: " + player.getGamesPlayed());
         System.out.println("Games won: " + player.getGamesWon());
         System.out.println("Current win streak: " + player.getCurrentStreak());
@@ -121,12 +138,10 @@ public class Main {
         System.out.print(prompt);
         while (scanner.hasNextLine()) {
             String value = scanner.nextLine().trim();
-            if (!value.isEmpty()) {
-                return value;
-            }
+            if (!value.isEmpty()) return value;
             System.out.print("Please enter a value: ");
         }
-        throw new IllegalArgumentException("Input ended unexpectedly.");
+        throw new IllegalStateException("Input ended unexpectedly.");
     }
 
     private static double readNonNegativeDouble(Scanner scanner, String prompt) {
@@ -134,13 +149,11 @@ public class Main {
             String input = readText(scanner, prompt);
             try {
                 double value = Double.parseDouble(input);
-                if (Double.isFinite(value) && value >= 0) {
-                    return value;
-                }
+                if (Double.isFinite(value) && value >= 0) return value;
             } catch (NumberFormatException ignored) {
-                // Re-prompt below with a clear message.
+                // Recover by displaying the validation message and prompting again.
             }
-            System.out.println("Enter a non-negative number.");
+            System.out.println("Enter a finite, non-negative number.");
         }
     }
 
@@ -149,11 +162,9 @@ public class Main {
             String input = readText(scanner, prompt);
             try {
                 int value = Integer.parseInt(input);
-                if (value > 0) {
-                    return value;
-                }
+                if (value > 0) return value;
             } catch (NumberFormatException ignored) {
-                // Re-prompt below with a clear message.
+                // Recover by displaying the validation message and prompting again.
             }
             System.out.println("Enter a whole number greater than zero.");
         }
